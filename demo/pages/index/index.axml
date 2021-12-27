@@ -1,0 +1,6 @@
+
+<view>
+  <button size="default" type="primary" onTap="onClickW">写入日志</button>
+  <button size="default" type="primary" style="margin-top: 60rpx" onTap="onClickR">读日志</button>
+  <button size="default" type="primary" style="margin-top: 60rpx" onTap="onClickD">删除日志</button>
+</view>
