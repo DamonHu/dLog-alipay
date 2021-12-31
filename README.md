@@ -1,5 +1,9 @@
 # dLog-alipay
 
+> 因为支付宝小程序基本只在中国大陆，所以这里只提供中文介绍，暂不提供英文介绍。
+> 
+> Alipay miniprogram exists only in Chinese mainland, so it only provides Chinese introduction, and it does not provide English introduction at the moment.
+
 该项目用于支付宝小程序日志本地记录，会将指定的日志保存到本地，便于用户反馈或者修复bug时参考。
 
 由于小程序对本地存储的大小有限制，为了平衡日志数和存储大小，所以将日志内容分为三级，每一级只有一个文件
@@ -35,10 +39,18 @@ dLog.log("write")
 
 ### 3、读取日志
 
-由于支付宝因为安全限制，禁止上传本地直接生成的文件。所以可以采用`POST`请求方式，将日志内容读取出来，然后上传到服务器。第一个参数分别对应上面所说的最新日志、备份日志、归档日志，可以按需读取即可
+由于支付宝因为安全限制，禁止上传本地直接生成的文件。所以可以采用`POST`请求方式，将日志内容读取出来，然后上传到服务器。第一个参数分别对应上面所说的最新日志、备份日志、归档日志，可以按需读取即可。
 
 ```
-dLog.read(dLog.LogFilePathType.log, function(res){
+dLog.read([dLog.LogFilePathType.log], function(res){
     console.log(res)
+})
+```
+
+**第一个参数是数组形式**，如果想读取所有日志，可以进行自定义拼接，例如同时读取最新日志、备份日志、存的日志，在数组中添加类型即可
+
+```
+dLog.read([dLog.LogFilePathType.log, dLog.LogFilePathType.backup, dLog.LogFilePathType.archive], function(res){
+   console.log(res)
 })
 ```

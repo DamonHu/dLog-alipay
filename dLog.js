@@ -10,7 +10,7 @@
  */
 const LogFilePathType = {
   "log": "/dLog.txt",
-  "logTemp": "/dLog_temp.txt",
+  "logTemp": "/dLog_temp.txt",  //缓存数据，不建议读取
   "backup": "/dLog_backup.txt",
   "archive": "/dLog_archive.txt"
 }
@@ -39,6 +39,7 @@ const log = function () {
         if (res.size > 2 * 1024 * 1024) {
           _backup()
         }
+        _needCheckBackup = false
       }
     })
   }
@@ -50,23 +51,18 @@ const clean = function () {
   _clean(LogFilePathType.log)
 }
 
-const read = function (type = LogFilePathType.log, complete) {
-  _fileManager.readFile({
-      filePath: _logFilePath(type),
-      encoding: "utf8",
-      success: (res) => {
-        res.data = JSON.stringify(res.data)
-        if (complete != null) {
-          complete(res)
-        }
-      },
-      fail: (error) => {
-        console.error("dLog read fail: ", error)
-        if (complete != null) {
-          complete("dLog read fail: " + error.error + error.errorMessage)
-        }
-      }
-    });
+const read = function (typeList = [LogFilePathType.log], complete, content = "") {
+  _read(typeList[0], function(res){
+    if (typeList.length > 0) {
+      var _typeList = typeList
+      _typeList.shift()
+      let _content = content + res.data
+      read(_typeList, complete, _content)
+    } else {
+      res.data = content
+      complete(res)
+    }
+  })
 }
 
 /** private */
@@ -98,6 +94,28 @@ const _prepareWrite = function (type = LogFilePathType.log, content, complete) {
       })
     }
   })
+}
+
+const _read = function (type = LogFilePathType.log, complete) {
+  _fileManager.readFile({
+      filePath: _logFilePath(type),
+      encoding: "utf8",
+      success: (res) => {
+        res.data = JSON.stringify(res.data)
+        if (complete != null) {
+          complete(res)
+        }
+      },
+      fail: (error) => {
+        console.error("dLog read fail, skip read: ", error)
+        if (complete != null) {
+          var res = {
+            data: "dLog read fail: " + error.error + error.errorMessage
+          }
+          complete(res)
+        }
+      }
+    });
 }
 
 const _write = function (type = LogFilePathType.log, content, complete) {

@@ -11,7 +11,13 @@ Page({
   },
   
   onClickR(){
-    dLog.read(dLog.LogFilePathType.log, function(res){
+    dLog.read([dLog.LogFilePathType.log], function(res){
+      console.log(res)
+    })
+  },
+
+  onClickA(){
+    dLog.read([dLog.LogFilePathType.log, dLog.LogFilePathType.backup, dLog.LogFilePathType.archive], function(res){
       console.log(res)
     })
   },
