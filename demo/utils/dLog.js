@@ -1,4 +1,4 @@
-var _debugMode = false       //调试模式
+var _debugMode = true       //调试模式
 let _needCheckLogFile = true //首次检查log文件大小和状态
 let _checkLogFileComplete = false  //log文件检查完成
 
@@ -154,7 +154,7 @@ const _backup = function () {
     newPath: _logFilePath(LogFilePathType.logTemp),
     success: () => {
       //2、读取日志内容写入备份数据
-      read([_logFilePath(LogFilePathType.logTemp)], function(readRes) {
+      _read(_logFilePath(LogFilePathType.logTemp), function(readRes) {
         _prepareWrite(LogFilePathType.backup, readRes.data, function(){
           //3、删除临时的日志文件，检测备份条件
           _clean(LogFilePathType.logTemp)
