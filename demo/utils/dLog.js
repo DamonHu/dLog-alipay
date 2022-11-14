@@ -1,3 +1,7 @@
+var _debugMode = false       //调试模式
+let _needCheckLogFile = true //首次检查log文件大小和状态
+let _checkLogFileComplete = false  //log文件检查完成
+
 /** 数据类型说明 **/
 /**
  * 写入逻辑
@@ -15,7 +19,6 @@ const LogFilePathType = {
   "archive": "/dLog_archive.txt"
 }
 
-var _needCheckBackup = true
 const log = function () {
   let time = _currentTime()
   let vars = Array.prototype.slice.call(arguments)
@@ -32,19 +35,27 @@ const log = function () {
     }
   }
   //检测大小，最快上传，超过2M启动备份检查
-  if (_needCheckBackup) {
+  if (_needCheckLogFile) {
     _fileManager.getFileInfo({
       filePath: _logFilePath(),
       success: (res) => {
+        _debugLog("delog check success", res);
         if (res.size > 2 * 1024 * 1024) {
           _backup()
+        } else {
+          _checkLogFileComplete = true
         }
-        _needCheckBackup = false
+      },
+      fail: (error) => {
+        _debugLog("delog check error:", error);
+        _checkLogFileComplete = true
       }
     })
+    _needCheckLogFile = false
   }
-  
-  _prepareWrite(LogFilePathType.log, "\n\n====>>>>>>" + time + "====>>>>>\n\n" + string)
+  if (_checkLogFileComplete) {
+    _prepareWrite(LogFilePathType.log, "\n\n====>>>>>>" + time + "====>>>>>\n\n" + string)
+  }
 }
 
 const clean = function () {
@@ -65,7 +76,7 @@ const read = function (typeList = [LogFilePathType.log], complete, content = "")
   })
 }
 
-/** private */
+/******************* private **************************/
 const _fileManager = my.getFileSystemManager()
 
 const _logFilePath = function (type = LogFilePathType.log) {
@@ -85,11 +96,11 @@ const _prepareWrite = function (type = LogFilePathType.log, content, complete) {
         filePath: _logFilePath(type),
         data: '\n\ncreate time: ' + _currentTime(),
         success: (createRes) => {
-          console.log("create success")
+          _debugLog("create" + _logFilePath(type) + "success");
           _write(type, content, complete)
         },
         fail: (createError) => {
-          console.error("create fail: ", createError);
+          _debugLog("create" + _logFilePath(type) + "fail", createError);
         },
       })
     }
@@ -107,7 +118,7 @@ const _read = function (type = LogFilePathType.log, complete) {
         }
       },
       fail: (error) => {
-        console.error("dLog read fail, skip read: ", error)
+        _debugLog("dLog read fail, skip read: ", error);
         if (complete != null) {
           var res = {
             data: "dLog read fail: " + error.error + error.errorMessage
@@ -136,20 +147,21 @@ const _write = function (type = LogFilePathType.log, content, complete) {
 }
 
 const _backup = function () {
+  _debugLog("dlog start backup");
   //1、创建新的日志文件，以便继续写入
    _fileManager.rename({
     oldPath: _logFilePath(),
     newPath: _logFilePath(LogFilePathType.logTemp),
-    success: (res) => {
+    success: () => {
       //2、读取日志内容写入备份数据
-      read(_logFilePath(LogFilePathType.logTemp), function(readRes) {
+      read([_logFilePath(LogFilePathType.logTemp)], function(readRes) {
         _prepareWrite(LogFilePathType.backup, readRes.data, function(){
           //3、删除临时的日志文件，检测备份条件
           _clean(LogFilePathType.logTemp)
           _fileManager.getFileInfo({
             filePath: _logFilePath(LogFilePathType.backup),
               success: (res) => {
-                //4、大于10M，使用该数据备份存储
+                //4、大于10M，删除最早的备份archive数据，使用该数据备份存储
                 if (res.size > 10 * 1024 * 1024) {
                   _clean(LogFilePathType.archive, function () {
                     _fileManager.rename({
@@ -158,15 +170,23 @@ const _backup = function () {
                       success: (res) => {
                         //5、清理缓存，备份成功 Done
                         _clean(LogFilePathType.backup)
-                        console.log("backup success")
+                        _debugLog("backup success");
                       }
                     })
                   })
                 }
+              },
+              fail: (error) => {
+                _debugLog("backup error", error);
               }
           })
         })
       })
+      _checkLogFileComplete = true
+    },
+    fail: (error) => {
+      _debugLog("dLog backup, rename error: ", error);
+      _checkLogFileComplete = true
     }
   })  
 }
@@ -174,22 +194,25 @@ const _backup = function () {
 const _clean = function (type = LogFilePathType.log, complete) {
   _fileManager.access({
     path: _logFilePath(type),
-    success: (res) => {
+    success: () => {
       _fileManager.unlink({
         filePath: _logFilePath(type),
         success: () => {
-          console.log("log delete success");
+          _debugLog("log delete success");
           if (complete != null) {
             complete()
           }
         }
       });
     },
-    fail: (res) => {
+    fail: (error) => {
       if (res.error == 10022) {
-        console.error("no such log file")
+        _debugLog("_clean error, no such log file");
       } else {
-        console.error("remove error:", error)
+        _debugLog("_clean error, no such log file", error);
+      }
+      if (complete != null) {
+        complete()
       }
     }
   })
@@ -205,6 +228,12 @@ const _currentTime = function() {
   const second = date.getSeconds()
 
   return "" + year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second
+}
+
+const _debugLog = function() {
+  if (_debugMode) {
+    console.log("[dLog] ", arguments);
+  }
 }
 
 export default {
